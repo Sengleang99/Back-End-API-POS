@@ -5,6 +5,7 @@ use App\Http\Controllers\customerControllerapi;
 use App\Http\Controllers\employeecontrollerapi;
 use App\Http\Controllers\orderControllerapi;
 use App\Http\Controllers\orderDetailControllerapi;
+use App\Http\Controllers\orderStatusControllerapi;
 use App\Http\Controllers\paymentControllerapi;
 use App\Http\Controllers\productControllerapi;
 use App\Http\Controllers\productImageControllerapi;
@@ -79,3 +80,5 @@ Route::get('/getcustomer',[customerControllerapi::class,'GetCustomer']);
 Route::post('/addcustomer',[customerControllerapi::class,'AddCustomer']);
 Route::put('/editcustomer/{id}',[customerControllerapi::class,'EditCustomer']);
 Route::delete('/deletecustomer/{id}',[customerControllerapi::class,'DeleteCustomer']);
+
+Route::get('/readorderStatus',[orderStatusControllerapi::class,'Getorderstatus']);
