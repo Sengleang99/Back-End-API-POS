@@ -13,8 +13,14 @@ class orderDetailControllerapi extends Controller
 
     public function GetOrderDetail()
     {
-        return DB::table('order_details')->get();
+       $ordersDetail = DB::table('order_detail as od')
+           ->select('od.*', 'p.product_name')
+           ->join('products as p', 'od.products_id', '=', 'p.products_id')
+           ->orderBy('od.order_details_id','DESC')
+           ->get();
+       return response()->json($ordersDetail);
     }
+    
 
     public function AddOrderDetail(Request $request)
     {

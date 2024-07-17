@@ -15,12 +15,11 @@ class orderControllerapi extends Controller
         return orderModel::all();
     }
     public function GetOrder()
-    {
+    {   
         $orders = DB::table('order')
-            ->select('order.*', 'products.product_name','products.price', 'customers.name', 'payment_methods.method_name')
-            ->join('products', 'orders.products_id','=','products.products_id')
-            ->join('customers', 'orders.customers_id','=','customers.customers_id')
-            ->join('payment_methods', 'orders.payment_methods_id','=','payment_methods.payment_methods_id')
+            ->select('order.*','customers.name', 'payment_methods.method_name')
+            ->join('customers', 'order.customers_id','=','customers.customers_id')
+            ->join('payment_methods', 'order.payment_methods_id','=','payment_methods.payment_methods_id')
             ->orderBy('orders_id','DESC')
             ->get();
         return response()->json($orders); 
@@ -49,21 +48,27 @@ class orderControllerapi extends Controller
             // Begin transaction
             DB::beginTransaction();
     
-            $order = new orderModel();
-            $order->customers_id = $request->customers_id;
-            $order->payment_methods_id = $request->payment_methods_id;
-            $order->order_statuses_id = $request->order_statuses_id;
-            $order->order_date = $request->order_date;
-            $order->total = $request->total;
-            $order->save();
+            // Insert order
+            $orderId = DB::table('order')->insert([
+                'customers_id' => $request->customers_id,
+                'payment_methods_id' => $request->payment_methods_id,
+                'order_statuses_id' => $request->order_statuses_id,
+                'order_date' => $request->order_date,
+                'total' => $request->total,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
     
+            // Insert order details
             foreach ($request->items as $item) {
-                $orderDetail = new orderDetailModel();
-                $orderDetail->orders_id = $order->orders_id; // Use the correct primary key
-                $orderDetail->products_id = $item['products_id'];
-                $orderDetail->quantity = $item['quantity'];
-                $orderDetail->price = $item['price'];
-                $orderDetail->save();
+                DB::table('order_detail')->insert([
+                    'orders_id' => $orderId,
+                    'products_id' => $item['products_id'],
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price'],
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
             }
     
             // Commit transaction
@@ -76,6 +81,8 @@ class orderControllerapi extends Controller
             return response()->json(['message' => 'Internal Server Error', 'error' => $e->getMessage()], 500);
         }
     }
+    
+    
     public function EditOrder(Request $request, $id)
     {
         $products_id = $request->input('products_id');
