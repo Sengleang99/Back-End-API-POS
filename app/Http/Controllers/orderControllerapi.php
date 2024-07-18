@@ -17,8 +17,9 @@ class orderControllerapi extends Controller
     public function GetOrder()
     {   
         $orders = DB::table('order')
-            ->select('order.*','customers.name', 'payment_methods.method_name')
+            ->select('order.*','customers.name', 'payment_methods.method_name','order_statuses.status')
             ->join('customers', 'order.customers_id','=','customers.customers_id')
+            ->join('order_statuses', 'order.order_statuses_id', '=', 'order_statuses.order_statuses_id')
             ->join('payment_methods', 'order.payment_methods_id','=','payment_methods.payment_methods_id')
             ->orderBy('orders_id','DESC')
             ->get();
@@ -48,8 +49,17 @@ class orderControllerapi extends Controller
             // Begin transaction
             DB::beginTransaction();
     
+            // Check stock quantity for each item
+            foreach ($request->items as $item) {
+                $product = DB::table('products')->where('products_id', $item['products_id'])->first();
+                if (!$product || $product->stock_quantity < $item['quantity']) {
+                    DB::rollBack();
+                    return response()->json(['message' => 'Insufficient stock for product ID: ' . $item['products_id']], 400);
+                }
+            }
+    
             // Insert order
-            $orderId = DB::table('order')->insert([
+            $orderId = DB::table('order')->insertGetId([
                 'customers_id' => $request->customers_id,
                 'payment_methods_id' => $request->payment_methods_id,
                 'order_statuses_id' => $request->order_statuses_id,
@@ -59,7 +69,7 @@ class orderControllerapi extends Controller
                 'updated_at' => now()
             ]);
     
-            // Insert order details
+            // Insert order details and decrement stock quantity
             foreach ($request->items as $item) {
                 DB::table('order_detail')->insert([
                     'orders_id' => $orderId,
@@ -69,6 +79,11 @@ class orderControllerapi extends Controller
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);
+    
+                // Decrement stock quantity
+                DB::table('products')
+                    ->where('products_id', $item['products_id'])
+                    ->decrement('stock_quantity', $item['quantity']);
             }
     
             // Commit transaction
@@ -81,6 +96,7 @@ class orderControllerapi extends Controller
             return response()->json(['message' => 'Internal Server Error', 'error' => $e->getMessage()], 500);
         }
     }
+    
     
     
     public function EditOrder(Request $request, $id)
